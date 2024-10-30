@@ -17,9 +17,9 @@ class FuaController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $idEpisodio = '1667447';
+        $idEpisodio = $request->query('idEpisodio');//'1667447';
         $datos = $this->liquidacionData($idEpisodio);
         return $datos;
     }
@@ -147,7 +147,7 @@ class FuaController extends Controller
         //return $datos;//response->json($datos);
         return $datos;
     }
-    public function reporte_excel()
+    public function reporte_excel(Request $request)
     {
 //        $data = [
 //            "DATA_REPORTE" => [
@@ -207,14 +207,14 @@ class FuaController extends Controller
 //                ]
 //            ]
 //        ];
-        $idEpisodio = '1667447';
+        $idEpisodio = $request->query('idEpisodio');//'1667447';
         $data = $this->liquidacionData($idEpisodio);
         return Excel::download(new LiquidacionExport($data), 'liquidacion.xlsx');
     }
-    public function reporte_pdf()
+    public function reporte_pdf(Request $request)
     {
         // Datos
-        $idEpisodio = '1667447';
+        $idEpisodio = $request->query('idEpisodio');//'1667447';//'1667447';
         $data = $this->liquidacionData($idEpisodio);
 
         // Generar HTML para el PDF
@@ -228,14 +228,21 @@ class FuaController extends Controller
         // Cargar HTML
         $dompdf->loadHtml($html);
 
-        // Configurar tamaño y orientación del papel (opcional)
+        // Configurar tamaño y orientación del papel
         $dompdf->setPaper([0, 0, 1200, 842], 'landscape');
 
         // Renderizar el PDF
         $dompdf->render();
 
-        // Enviar el PDF al navegador
-        return $dompdf->stream('documento.pdf');
+        // Obtener el contenido del PDF como string
+        $pdfContent = $dompdf->output();
+
+        // Devolver respuesta con encabezados adecuados
+        return response($pdfContent, 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="documento.pdf"')
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
     private function generateHtml($data)
