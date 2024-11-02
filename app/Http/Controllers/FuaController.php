@@ -14,12 +14,9 @@ use Dompdf\Options;
 
 class FuaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
-        $idEpisodio = $request->query('idEpisodio');//'1667447';
+        $idEpisodio = $request->query('idEpisodio');
         $datos = $this->liquidacionData($idEpisodio);
         return $datos;
     }
@@ -55,6 +52,7 @@ class FuaController extends Controller
 
         // Organizar los datos según la estructura solicitada
         $datos = [
+            //"MONTO_TOTAL_ATENCION"=>number_format(12.000,3),
             "DATOS_DE_LA_ENTIDAD" => [
                 [
                     "Número de Formato" => $resultados[0]->NFUA ?? '',
@@ -70,44 +68,59 @@ class FuaController extends Controller
                     "Fecha de Atención" => $resultados[0]->FecAte ?? ''
                 ]
             ],
-            "MEDICAMENTOS" => $resultados->whereNotNull('CodMedicamento')->map(function ($item) {
-                return [
-                    "Codigo" => $item->CodMedicamento,
-                    "Nombre" => $item->medicamento_descripcion,
-                    "FF" => $item->FF,
-                    "concentracion" => $item->CONCENTR,
-                    "Pres." => $item->CantPrescrita,
-                    "Entr." => $item->CantEntregada,
-                    "Nro" => $item->NroDiagnostico,
-                    "Dx" => "SEPSIS BACTERIANA",  // Ajusta según tu lógica
-                    "Precio" => $item->PrecioUnitario,
-                    "Importe" => $item->Importe
-                ];
-            })->values()->all(),
-            "PROCEDIMIENTOS" => $resultados->whereNotNull('CodProcedimiento')->map(function ($item) {
-                return [
-                    "Código" => $item->CodProcedimiento,
-                    "Nombre" => $item->procedimiento_descripcion,
-                    "Pres." => $item->cantorig,
-                    "Entr." => $item->CantEjecutado,
-                    "N°" => $item->NroDiagnostico,
-                    "Dx" => "SEPSIS BACTERIANA",  // Ajusta según tu lógica
-                    "Precio" => $item->procedimiento_PrecioUnitario,
-                    "Importe" => $item->procedimiento_importe
-                ];
-            })->values()->all(),
-            "INSUMOS" => $resultados->whereNotNull('CodInsumo')->map(function ($item) {
-                return [
-                    "Código" => $item->CodInsumo,
-                    "Nombre" => $item->insumo_descripcion,
-                    "Pres." => $item->insumo_CantPrescrita,
-                    "Entr." => $item->insumo_CantEntregada,
-                    "N°" => $item->insumo_NroDiagnostico,
-                    "Dx" => "SEPSIS BACTERIANA",  // Ajusta según tu lógica
-                    "Precio" => $item->insumo_PrecioUnitario,
-                    "Importe" => $item->insumo_importe
-                ];
-            })->values()->all()
+            "MEDICAMENTOS" => [
+                "montoTotal" => round($resultados->whereNotNull('CodMedicamento')->sum(function ($item) {
+                    return $item->PrecioUnitario * $item->Importe;
+                }),2),
+                "data" => $resultados->whereNotNull('CodMedicamento')->map(function ($item) {
+                    return [
+                        "Codigo" => $item->CodMedicamento,
+                        "Nombre" => $item->medicamento_descripcion,
+                        "FF" => $item->FF,
+                        "concentracion" => $item->CONCENTR,
+                        "Pres." => $item->CantPrescrita,
+                        "Entr." => $item->CantEntregada,
+                        "Nro" => $item->NroDiagnostico,
+                        "Dx" => "SEPSIS BACTERIANA",  // Ajusta según tu lógica
+                        "Precio" => number_format($item->PrecioUnitario, 2),
+                        "Importe" => number_format($item->Importe, 2),
+                    ];
+                })->values()->all(),
+            ],
+            "PROCEDIMIENTOS" => [
+                "montoTotal" => round($resultados->whereNotNull('CodProcedimiento')->sum(function ($item) {
+                    return $item->procedimiento_PrecioUnitario * $item->procedimiento_importe;
+                }),2),
+                "data" => $resultados->whereNotNull('CodProcedimiento')->map(function ($item) {
+                    return [
+                        "Codigo" => $item->CodProcedimiento,
+                        "Nombre" => $item->procedimiento_descripcion,
+                        "Pres." => $item->cantorig,
+                        "Entr." => $item->CantEjecutado,
+                        "N°" => $item->NroDiagnostico,
+                        "Dx" => "SEPSIS BACTERIANA",  // Ajusta según tu lógica
+                        "Precio" => number_format($item->procedimiento_PrecioUnitario, 2),
+                        "Importe" => number_format($item->procedimiento_importe, 2),
+                    ];
+                })->values()->all(),
+            ],
+            "INSUMOS" => [
+                "montoTotal" => round($resultados->whereNotNull('CodInsumo')->sum(function ($item) {
+                    return $item->insumo_PrecioUnitario * $item->insumo_importe;
+                }),2),
+                "data" => $resultados->whereNotNull('CodInsumo')->map(function ($item) {
+                    return [
+                        "Codigo" => $item->CodInsumo,
+                        "Nombre" => $item->insumo_descripcion,
+                        "Pres." => $item->insumo_CantPrescrita,
+                        "Entr." => $item->insumo_CantEntregada,
+                        "N°" => $item->insumo_NroDiagnostico,
+                        "Dx" => "SEPSIS BACTERIANA",  // Ajusta según tu lógica
+                        "Precio" => number_format($item->insumo_PrecioUnitario, 2),
+                        "Importe" => number_format($item->insumo_importe, 2),
+                    ];
+                })->values()->all(),
+            ]
         ];
 
         return $datos;
@@ -149,94 +162,29 @@ class FuaController extends Controller
     }
     public function reporte_excel(Request $request)
     {
-//        $data = [
-//            "DATA_REPORTE" => [
-//                ["Monto total de la atención" => "12,520.00"]
-//            ],
-//            "DATOS_DE_LA_ENTIDAD" => [
-//                [
-//                    "Número de Formato" => "00023159 - 24-00344352",
-//                    "Fecha Digitación" => "28/09/2024",
-//                    "IPRESS" => "0000023 HOSPITAL DE EMERGENCIAS VILLA EL SALVADOR"
-//                ]
-//            ],
-//            "DATOS_DEL_ASEGURADO" => [
-//                [
-//                    "Nombres" => "JOSÉ ROJAS PAREDES",
-//                    "N° Historia" => "12214455",
-//                    "Contrato" => "230-E-10825478",
-//                    "Fecha de Atención" => "27/09/2024"
-//                ]
-//            ],
-//            "MEDICAMENTOS" => [
-//                [
-//                    "codigo" => 8013,
-//                    "nombre" => "AGUA PARA INYECCION",
-//                    "formaFarmaceutica" => "INY.",
-//                    "concentracion" => "500 ug(0.5mg)",
-//                    "presentacion" => 2,
-//                    "entrada" => 2,
-//                    "numeroDiagnostico" => 1,
-//                    "diagnostico" => "SEPSIS BACTERIANA",
-//                    "precio" => 2.4,
-//                    "importe" => 4.83
-//                ]
-//            ],
-//            "PROCEDIMIENTOS" => [
-//                [
-//                    "Código" => 8013,
-//                    "Nombre" => "Examen de orina con tira reactiva",
-//                    "Pres." => 2,
-//                    "Entr." => 2,
-//                    "N°" => 1,
-//                    "Dx" => "SEPSIS BACTERIANA",
-//                    "Precio" => 2.4,
-//                    "Importe" => 4.83
-//                ]
-//            ],
-//            "INSUMOS" => [
-//                [
-//                    "Código2" => 8014,
-//                    "Nombre2" => "AGUJA HIPODERMICA DESCARTABLE N° 23 G X 1",
-//                    "Pres.2" => 2,
-//                    "Entr.2" => 2,
-//                    "N°2" => 1,
-//                    "Dx2" => "SEPSIS BACTERIANA",
-//                    "Precio2" => 2.4,
-//                    "Importe2" => 4.83
-//                ]
-//            ]
-//        ];
-        $idEpisodio = $request->query('idEpisodio');//'1667447';
+        $idEpisodio = $request->query('idEpisodio');
         $data = $this->liquidacionData($idEpisodio);
         return Excel::download(new LiquidacionExport($data), 'liquidacion.xlsx');
     }
     public function reporte_pdf(Request $request)
     {
         // Datos
-        $idEpisodio = $request->query('idEpisodio');//'1667447';//'1667447';
+        $idEpisodio = $request->query('idEpisodio');
         $data = $this->liquidacionData($idEpisodio);
-
         // Generar HTML para el PDF
         $html = $this->generateHtml($data);
-
         // Configuración de Dompdf
         $options = new Options();
         $options->set('defaultFont', 'Courier');
         $dompdf = new Dompdf($options);
-
         // Cargar HTML
         $dompdf->loadHtml($html);
-
         // Configurar tamaño y orientación del papel
         $dompdf->setPaper([0, 0, 1200, 842], 'landscape');
-
         // Renderizar el PDF
         $dompdf->render();
-
         // Obtener el contenido del PDF como string
         $pdfContent = $dompdf->output();
-
         // Devolver respuesta con encabezados adecuados
         return response($pdfContent, 200)
             ->header('Content-Type', 'application/pdf')
@@ -295,34 +243,18 @@ class FuaController extends Controller
 
         return $html;
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         //
     }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         //
