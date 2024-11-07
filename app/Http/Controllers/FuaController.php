@@ -49,7 +49,70 @@ class FuaController extends Controller
                 'PROCEDIMIENTO.IMPORTE AS procedimiento_importe'
             )
             ->get();
+        //otra BD
+       if ($resultados->isEmpty()) {
+           $resultados = DB::connection('DATABASE_HEVES')->table('atencion AS ATEN')
+               // Join para Diagnósticos
+               ->leftJoin('dbo.atediagnosticos AS DIAG', 'ATEN.IdAtencion', '=', 'DIAG.IdAtencion')
+               // Join para Medicamentos
+               ->leftJoin('atemedicamentos AS MED', 'DIAG.IdDiagnostico', '=', 'MED.IdDiagnostico')
+               ->leftJoin('SIGH_INTERFACE.PLATAFORMA.medicamentos AS IMED', function($join) {
+                   $join->on('MED.CodMedicamento', '=', 'IMED.CodMed')
+                       ->collation('Modern_Spanish_CI_AS');
+               })
+               ->leftJoin('dbo.cie10 AS CIE', 'DIAG.CodDia', '=', 'CIE.CodDia')
+               // Join para Insumos
+               ->leftJoin('ateinsumos AS INSU', 'DIAG.IdDiagnostico', '=', 'INSU.IdDiagnostico')
+               ->leftJoin('SIGH_INTERFACE.PLATAFORMA.insumos AS I_INSUM', function($join) {
+                   $join->on('INSU.CodInsumo', '=', 'I_INSUM.CodIns')
+                       ->collation('SQL_Latin1_General_CP1_CI_AS');
+               })
+               // Join para Procedimientos
+               ->leftJoin('ateprocedimientos AS PROCE', 'DIAG.IdDiagnostico', '=', 'PROCE.IdDiagnostico')
+               ->leftJoin('SIGH_INTERFACE.PLATAFORMA.PROCEDIMIENTO AS IPROCE', function($join) {
+                   $join->on('PROCE.CodProcedimiento', '=', 'IPROCE.CPMS')
+                       ->collation('SQL_Latin1_General_CP1_CI_AS');
+               })
+               // Filtro WHERE
+               ->where('IPROCE.NIVEL', 3)
+               ->where('IPROCE.IDESTADO', 0)
+               // Selección de columnas
+               ->select(
+               // Datos de Atención
+                   'ATEN.NFUA', 'ATEN.FecCrea', 'ATEN.ApePaterno', 'ATEN.ApeMaterno',
+                   'ATEN.PriNombre', 'ATEN.OtrNombre', 'ATEN.IdDisaFormato',
+                   'ATEN.LoteFormato', 'ATEN.NroFormato', 'ATEN.HisCli', 'ATEN.FecAte',
+                   // Medicamentos
+                   'MED.CodMedicamento', 'IMED.Nombre AS NombreMedicamento',
+                   'IMED.FormaFarmaceutica', 'IMED.Concen',
+                   'MED.CantPrescrita AS CantidadPrescritaMedicamento',
+                   'MED.CantEntregada AS CantidadEntregadaMedicamento',
+                   'MED.NroDiagnostico AS DiagnosticoMedicamento',
+                   'CIE.Descripcion AS DescripcionDiagnosticoMedicamento',
+                   'MED.PrecioUnitario AS PrecioUnitarioMedicamento',
+                   DB::raw('(MED.CantEntregada * MED.PrecioUnitario) AS ImporteMedicamento'),
 
+                   // Insumos
+                   'INSU.IdInsumo', 'I_INSUM.Nombre AS NombreInsumo',
+                   'INSU.CantPrescrita AS CantidadPrescritaInsumo',
+                   'INSU.CantEntregada AS CantidadEntregadaInsumo',
+                   'INSU.NroDiagnostico AS DiagnosticoInsumo',
+                   'CIE.Descripcion AS DescripcionDiagnosticoInsumo',
+                   'INSU.PrecioUnitario AS PrecioUnitarioInsumo',
+                   DB::raw('(INSU.CantEntregada * INSU.PrecioUnitario) AS ImporteInsumo'),
+
+                   // Procedimientos
+                   'PROCE.CodProcedimiento', 'IPROCE.DESCRIPCIONSIS AS DescripcionProcedimiento',
+                   'PROCE.CantIndicado AS CantidadIndicadoProcedimiento',
+                   'PROCE.CantEjecutado AS CantidadEjecutadoProcedimiento',
+                   'PROCE.NroDiagnostico AS DiagnosticoProcedimiento',
+                   'CIE.Descripcion AS DescripcionProcedimiento',
+                   'PROCE.PrecioUnitario AS PrecioUnitarioProcedimiento',
+                   DB::raw('(PROCE.CantEjecutado * PROCE.PrecioUnitario) AS ImporteProcedimiento')
+               )
+               ->get();
+
+        }
         // Organizar los datos según la estructura solicitada
         $datos = [
             //"MONTO_TOTAL_ATENCION"=>number_format(12.000,3),
@@ -210,34 +273,59 @@ class FuaController extends Controller
     </head>
     <body>';
 
-        // Generar secciones dinámicas
-        foreach ($data as $section => $rows) {
-            $html .= "<h2>$section</h2><table>";
-
-            if (!empty($rows)) {
-                // Crear encabezados de la tabla usando las claves del primer elemento
-                $headers = array_keys($rows[0]);
-                $html .= '<tr>';
-                foreach ($headers as $header) {
-                    $html .= "<th>$header</th>";
-                }
-                $html .= '</tr>';
-
-                // Crear filas con los valores de cada elemento
-                foreach ($rows as $row) {
-                    $html .= '<tr>';
-                    foreach ($row as $value) {
-                        $html .= '<td>' . htmlspecialchars($value) . '</td>';
-                    }
-                    $html .= '</tr>';
-                }
-            } else {
-                // Mensaje para secciones vacías
-                $html .= '<tr><td colspan="100%">No hay datos disponibles</td></tr>';
+        // Sección "DATOS_DE_LA_ENTIDAD"
+        $html .= "<h2>DATOS DE LA ENTIDAD</h2><table>";
+        foreach ($data["DATOS_DE_LA_ENTIDAD"] as $row) {
+            foreach ($row as $key => $value) {
+                $html .= "<tr><th>$key</th><td>" . htmlspecialchars($value) . "</td></tr>";
             }
-
-            $html .= '</table>';
         }
+        $html .= '</table>';
+
+        // Sección "DATOS_DEL_ASEGURADO"
+        $html .= "<h2>DATOS DEL ASEGURADO</h2><table>";
+        foreach ($data["DATOS_DEL_ASEGURADO"] as $row) {
+            foreach ($row as $key => $value) {
+                $html .= "<tr><th>$key</th><td>" . htmlspecialchars($value) . "</td></tr>";
+            }
+        }
+        $html .= '</table>';
+
+        // Sección "MEDICAMENTOS"
+        $html .= "<h2>MEDICAMENTOS</h2><p>Monto Total: " . number_format($data['MEDICAMENTOS']['montoTotal'], 2) . "</p><table>";
+        $html .= '<tr><th>Codigo</th><th>Nombre</th><th>FF</th><th>Concentracion</th><th>Pres.</th><th>Entr.</th><th>Nro</th><th>Dx</th><th>Precio</th><th>Importe</th></tr>';
+        foreach ($data["MEDICAMENTOS"]["data"] as $medicamento) {
+            $html .= "<tr>";
+            foreach ($medicamento as $value) {
+                $html .= "<td>" . htmlspecialchars($value) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+        $html .= '</table>';
+
+        // Sección "PROCEDIMIENTOS"
+        $html .= "<h2>PROCEDIMIENTOS</h2><p>Monto Total: " . number_format($data['PROCEDIMIENTOS']['montoTotal'], 2) . "</p><table>";
+        $html .= '<tr><th>Codigo</th><th>Nombre</th><th>Pres.</th><th>Entr.</th><th>N°</th><th>Dx</th><th>Precio</th><th>Importe</th></tr>';
+        foreach ($data["PROCEDIMIENTOS"]["data"] as $procedimiento) {
+            $html .= "<tr>";
+            foreach ($procedimiento as $value) {
+                $html .= "<td>" . htmlspecialchars($value) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+        $html .= '</table>';
+
+        // Sección "INSUMOS"
+        $html .= "<h2>INSUMOS</h2><p>Monto Total: " . number_format($data['INSUMOS']['montoTotal'], 2) . "</p><table>";
+        $html .= '<tr><th>Codigo</th><th>Nombre</th><th>Pres.</th><th>Entr.</th><th>N°</th><th>Dx</th><th>Precio</th><th>Importe</th></tr>';
+        foreach ($data["INSUMOS"]["data"] as $insumo) {
+            $html .= "<tr>";
+            foreach ($insumo as $value) {
+                $html .= "<td>" . htmlspecialchars($value) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+        $html .= '</table>';
 
         $html .= '</body></html>';
 

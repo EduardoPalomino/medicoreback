@@ -51,9 +51,9 @@ class LiquidacionExport implements FromCollection, WithEvents
         //$addSection('DATA REPORTE', ['Monto total de la atención'], $this->data['DATA_REPORTE'], 'ffffff', '2e74b5');
         $addSection('DATOS DE LA ENTIDAD', ['Número de Formato', 'Fecha Digitación', 'IPRESS'], $this->data['DATOS_DE_LA_ENTIDAD'], 'd9d9d9', 'b6d7a8');
         $addSection('DATOS DEL ASEGURADO', ['Nombres', 'N° Historia', 'Contrato', 'Fecha de Atención'], $this->data['DATOS_DEL_ASEGURADO'], 'd9d9d9', 'f9cb9c');
-        $addSection('MEDICAMENTOS', ['Código', 'Nombre', 'Forma Farm.', 'Concentración', 'Pres.', 'Entr.', 'N° Dx', 'Dx', 'Precio', 'Importe'], $this->data['MEDICAMENTOS'], 'd9d9d9', 'cfe2f3');
-        $addSection('INSUMOS', ['Código', 'Nombre', 'Pres.', 'Entr.', 'N°', 'Dx', 'Precio', 'Importe'], $this->data['INSUMOS'], 'd9d9d9', 'f4cccc');
-        $addSection('PROCEDIMIENTOS', ['Código', 'Nombre', 'Pres.', 'Entr.', 'N°', 'Dx', 'Precio', 'Importe'], $this->data['PROCEDIMIENTOS'], 'd9d9d9', 'ffe599'); // Mover PROCEDIMIENTOS al final
+        $addSection('MEDICAMENTOS', ['Código', 'Nombre', 'Forma Farm.', 'Concentración', 'Pres.', 'Entr.', 'N° Dx', 'Dx', 'Precio', 'Importe'], $this->data['MEDICAMENTOS']['data'], 'd9d9d9', 'cfe2f3');
+        $addSection('INSUMOS', ['Código', 'Nombre', 'Pres.', 'Entr.', 'N°', 'Dx', 'Precio', 'Importe'], $this->data['INSUMOS']['data'], 'd9d9d9', 'f4cccc');
+        $addSection('PROCEDIMIENTOS', ['Código', 'Nombre', 'Pres.', 'Entr.', 'N°', 'Dx', 'Precio', 'Importe'], $this->data['PROCEDIMIENTOS']['data'], 'd9d9d9', 'ffe599'); // Mover PROCEDIMIENTOS al final
 
         return collect($rows);
     }
@@ -177,17 +177,17 @@ class LiquidacionExport implements FromCollection, WithEvents
 
                 // Alinear a la izquierda los datos de MEDICAMENTOS
                 $medicamentosStartRow = $this->getSectionStartRow('MEDICAMENTOS', $sheet);
-                $medicamentosEndRow = $medicamentosStartRow+2 + count($this->data['MEDICAMENTOS']);
+                $medicamentosEndRow = $medicamentosStartRow+2 + count($this->data['MEDICAMENTOS']['data']);
                 $sheet->getStyle("A{$medicamentosStartRow}:{$highestColumn}{$medicamentosEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
                 // Alinear a la izquierda los datos de INSUMOS
                 $insumosStartRow = $this->getSectionStartRow('INSUMOS', $sheet);
-                $insumosEndRow = $insumosStartRow+2 + count($this->data['INSUMOS']);
+                $insumosEndRow = $insumosStartRow+2 + count($this->data['INSUMOS']['data']);
                 $sheet->getStyle("A{$insumosStartRow}:{$highestColumn}{$insumosEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
                 // Alinear a la izquierda los datos de PROCEDIMIENTOS
                 $procedimientosStartRow = $this->getSectionStartRow('PROCEDIMIENTOS', $sheet);
-                $procedimientosEndRow = $procedimientosStartRow+2 + count($this->data['PROCEDIMIENTOS']);
+                $procedimientosEndRow = $procedimientosStartRow+2 + count($this->data['PROCEDIMIENTOS']['data']);
                 $sheet->getStyle("A{$procedimientosStartRow}:{$highestColumn}{$procedimientosEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
             },
         ];
