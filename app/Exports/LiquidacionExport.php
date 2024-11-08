@@ -65,6 +65,17 @@ class LiquidacionExport implements FromCollection, WithEvents
                 $sheet = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
                 $highestColumn = $sheet->getHighestColumn();
+
+                // Función para insertar una fila con la etiqueta "Monto Total" encima de una sección
+                $insertMontoTotalRow = function ($sectionName, $sheet, $highestColumn,$monto) {
+                    $startRow = $this->getSectionStartRow($sectionName, $sheet);
+                    $sheet->insertNewRowBefore($startRow, 1); // Inserta una nueva fila antes del inicio de la sección
+                    $sheet->setCellValue("I" . ($startRow), "Monto Total ". ($monto));
+                    $sheet->mergeCells("I" . ($startRow) . ":{$highestColumn}" . ($startRow)); // Fusionar celdas para la fila "Monto Total"
+                    $sheet->getStyle("I" . ($startRow))->getFont()->setBold(true);
+                };
+
+
                 // Fusionar celdas A1 hasta G1
                 $sheet->mergeCells('A1:G1');
                 $sheet->mergeCells('C6:F6');
@@ -174,6 +185,11 @@ class LiquidacionExport implements FromCollection, WithEvents
                         ],
                     ]);
                 }
+
+                // Llamadas a la función con los 3 argumentos
+                $insertMontoTotalRow('INSUMOS', $sheet, $highestColumn,$this->data['INSUMOS']['montoTotal']);
+                $insertMontoTotalRow('MEDICAMENTOS', $sheet, $highestColumn,$this->data['MEDICAMENTOS']['montoTotal']);
+                $insertMontoTotalRow('PROCEDIMIENTOS', $sheet, $highestColumn,$this->data['PROCEDIMIENTOS']['montoTotal']);
 
                 // Alinear a la izquierda los datos de MEDICAMENTOS
                 $medicamentosStartRow = $this->getSectionStartRow('MEDICAMENTOS', $sheet);
