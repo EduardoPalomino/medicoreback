@@ -256,7 +256,7 @@ class FuaController extends Controller
             ->header('Access-Control-Expose-Headers', 'Content-Disposition');
     }
 
-    private function generateHtml($data)
+    private function generateHtml2($data)
     {
         // Estructura básica del HTML con estilos CSS
         $html = '
@@ -274,6 +274,14 @@ class FuaController extends Controller
     <body>';
 
         // Sección "DATOS_DE_LA_ENTIDAD"
+
+        $Montototalatencion = $data['MEDICAMENTOS']['montoTotal'] +
+            $data['PROCEDIMIENTOS']['montoTotal'] +
+            $data['INSUMOS']['montoTotal'];
+
+        // Formatea el resultado solo al mostrarlo
+        $Montototalatencion = number_format($Montototalatencion, 2);
+        $html="<p>Monto total de la atención: " . $Montototalatencion . "</p>";
         $html .= "<h2>DATOS DE LA ENTIDAD</h2><table>";
         foreach ($data["DATOS_DE_LA_ENTIDAD"] as $row) {
             foreach ($row as $key => $value) {
@@ -331,6 +339,92 @@ class FuaController extends Controller
 
         return $html;
     }
+
+    private function generateHtml($data)
+    {
+        // Estructura básica del HTML con estilos CSS
+        $html = '
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            h2 { background-color: #2e74b5; color: white; padding: 10px; }
+            .section-title { margin-top: 20px; font-weight: bold; }
+        </style>
+    </head>
+    <body>';
+
+        // Calcula el monto total de la atención
+        $Montototalatencion = $data['MEDICAMENTOS']['montoTotal'] +
+            $data['PROCEDIMIENTOS']['montoTotal'] +
+            $data['INSUMOS']['montoTotal'];
+
+        // Formatea el resultado solo al mostrarlo
+        $Montototalatencion = number_format($Montototalatencion, 2);
+        $html .= "<p><strong>Monto total de la atención: " . $Montototalatencion . "</strong></p>";
+
+        // Sección "DATOS_DE_LA_ENTIDAD"
+        $html .= "<h2>DATOS DE LA ENTIDAD</h2><table>";
+        foreach ($data["DATOS_DE_LA_ENTIDAD"] as $row) {
+            foreach ($row as $key => $value) {
+                $html .= "<tr><th>$key</th><td>" . htmlspecialchars($value) . "</td></tr>";
+            }
+        }
+        $html .= '</table>';
+
+        // Sección "DATOS_DEL_ASEGURADO"
+        $html .= "<h2>DATOS DEL ASEGURADO</h2><table>";
+        foreach ($data["DATOS_DEL_ASEGURADO"] as $row) {
+            foreach ($row as $key => $value) {
+                $html .= "<tr><th>$key</th><td>" . htmlspecialchars($value) . "</td></tr>";
+            }
+        }
+        $html .= '</table>';
+
+        // Sección "MEDICAMENTOS"
+        $html .= "<h2>MEDICAMENTOS</h2><p><strong>Monto Total: " . number_format($data['MEDICAMENTOS']['montoTotal'], 2) . "</strong></p><table>";
+        $html .= '<tr><th>Codigo</th><th>Nombre</th><th>FF</th><th>Concentracion</th><th>Pres.</th><th>Entr.</th><th>Nro</th><th>Dx</th><th>Precio</th><th>Importe</th></tr>';
+        foreach ($data["MEDICAMENTOS"]["data"] as $medicamento) {
+            $html .= "<tr>";
+            foreach ($medicamento as $value) {
+                $html .= "<td>" . htmlspecialchars($value) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+        $html .= '</table>';
+
+        // Sección "PROCEDIMIENTOS"
+        $html .= "<h2>PROCEDIMIENTOS</h2><p><strong>Monto Total: " . number_format($data['PROCEDIMIENTOS']['montoTotal'], 2) . "</strong></p><table>";
+        $html .= '<tr><th>Codigo</th><th>Nombre</th><th>Pres.</th><th>Entr.</th><th>N°</th><th>Dx</th><th>Precio</th><th>Importe</th></tr>';
+        foreach ($data["PROCEDIMIENTOS"]["data"] as $procedimiento) {
+            $html .= "<tr>";
+            foreach ($procedimiento as $value) {
+                $html .= "<td>" . htmlspecialchars($value) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+        $html .= '</table>';
+
+        // Sección "INSUMOS"
+        $html .= "<h2>INSUMOS</h2><p><strong>Monto Total: " . number_format($data['INSUMOS']['montoTotal'], 2) . "</strong></p><table>";
+        $html .= '<tr><th>Codigo</th><th>Nombre</th><th>Pres.</th><th>Entr.</th><th>N°</th><th>Dx</th><th>Precio</th><th>Importe</th></tr>';
+        foreach ($data["INSUMOS"]["data"] as $insumo) {
+            $html .= "<tr>";
+            foreach ($insumo as $value) {
+                $html .= "<td>" . htmlspecialchars($value) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+        $html .= '</table>';
+
+        $html .= '</body></html>';
+
+        return $html;
+    }
+
     public function store(Request $request)
     {
         //

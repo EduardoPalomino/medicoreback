@@ -65,158 +65,183 @@ class LiquidacionExport implements FromCollection, WithEvents
                 $sheet = $event->sheet->getDelegate();
                 $highestRow = $sheet->getHighestRow();
                 $highestColumn = $sheet->getHighestColumn();
+                //
+                $this->insertTotalRow('Monto total de la atención', $sheet, 'A', 4, $highestColumn, $this->calculateOverallTotal());
+                //MERGE
+                $this->mergeInitialCells($sheet,'A1:J1');
+                $this->mergeInitialCells($sheet,'A4:J4');
+                $this->mergeInitialCells($sheet,'A6:J6');
+                $this->mergeInitialCells($sheet,'C6:F6');
+                $this->mergeInitialCells($sheet,'C7:F7');
+                $this->mergeInitialCells($sheet,'C13:H13');
+                //$this->mergeInitialCells($sheet,'C14:E14');
+                // DIMESION COLUMN
+                $this->columnDimensionCells($sheet,'A',24);
+                $this->columnDimensionCells($sheet,'B',47);
+                $this->columnDimensionCells($sheet,'C',8);
+                $this->columnDimensionCells($sheet,'D',16);
+                $this->columnDimensionCells($sheet,'E',6);
+                $this->columnDimensionCells($sheet,'F',24);
+                $this->columnDimensionCells($sheet,'G',6);
+                $this->columnDimensionCells($sheet,'H',18);
+                //STYLE COLUMN
+                $this->applyTitleStyle($sheet, 'A1:J1', 10, true, Alignment::HORIZONTAL_CENTER,'data');
+                $this->applyTitleStyle($sheet, 'A4:J4', 10, true, Alignment::HORIZONTAL_RIGHT,'data');
 
-                // Función para insertar una fila con la etiqueta "Monto Total" encima de una sección
-                $insertMontoTotalRow = function ($sectionName, $sheet, $highestColumn,$monto) {
-                    $startRow = $this->getSectionStartRow($sectionName, $sheet);
-                    $sheet->insertNewRowBefore($startRow, 1); // Inserta una nueva fila antes del inicio de la sección
-                    $sheet->setCellValue("I" . ($startRow), "Monto Total ". ($monto));
-                    $sheet->mergeCells("I" . ($startRow) . ":{$highestColumn}" . ($startRow)); // Fusionar celdas para la fila "Monto Total"
-                    $sheet->getStyle("I" . ($startRow))->getFont()->setBold(true);
-                };
+                $this->applyTitleStyle($sheet, 'A6:J6', 11, true, Alignment::HORIZONTAL_LEFT,'header1');
+                $this->applyTitleStyle($sheet, 'A7:J7', 11, true, Alignment::HORIZONTAL_LEFT,'header2');
 
+                $this->applyTitleStyle($sheet, 'A12:J12', 11, true, Alignment::HORIZONTAL_LEFT,'header1');
+                $this->applyTitleStyle($sheet, 'A13:J13', 11, true, Alignment::HORIZONTAL_LEFT,'header2');
 
-                // Fusionar celdas A1 hasta G1
-                $sheet->mergeCells('A1:G1');
-                $sheet->mergeCells('C6:F6');
-                $sheet->mergeCells('C7:F7');
-                // Fusión de celdas C13 a H13
-                $sheet->mergeCells('C13:H13');
-                // Establecer anchos de columnas
-                $sheet->getColumnDimension('C')->setWidth(8);
-                $sheet->getColumnDimension('D')->setWidth(16);
-                $sheet->getColumnDimension('E')->setWidth(6);
-                $sheet->getColumnDimension('F')->setWidth(24);
-                $sheet->getColumnDimension('G')->setWidth(6);
-                $sheet->getColumnDimension('H')->setWidth(18);
-
-                // Ajustar ancho automático solo donde hay datos
-                foreach (range('A', $highestColumn) as $column) {
-                    $sheet->getColumnDimension($column)->setAutoSize(true);
-                }
-
-                // Aplicar tamaño de texto y fuente consistente
-                $sheet->getStyle("A1:{$highestColumn}{$highestRow}")->applyFromArray([
-                    'font' => [
-                        'name' => 'Calibri',
-                        'size' => 12,
-                    ],
-                ]);
-
-                // Alinear los textos de forma lógica
-                $sheet->getStyle("A1:{$highestColumn}{$highestRow}")
-                    ->getAlignment()
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
-                // Alineación inteligente según tipo de dato
-                foreach (range(2, $highestRow) as $row) {
-                    if (is_numeric($sheet->getCell("A{$row}")->getValue())) {
-                        $sheet->getStyle("A{$row}:{$highestColumn}{$row}")
-                            ->getAlignment()
-                            ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                    } else {
-                        $sheet->getStyle("A{$row}:{$highestColumn}{$row}")
-                            ->getAlignment()
-                            ->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                $this->applyTitleStyle($sheet, 'A18:J18', 11, true, Alignment::HORIZONTAL_LEFT,'header1');
+                $this->applyTitleStyle($sheet, 'A19:J19', 11, true, Alignment::HORIZONTAL_LEFT,'header2');
+                // Procesa las secciones: INSUMOS, MEDICAMENTOS, y PROCEDIMIENTOS
+                foreach (['INSUMOS', 'MEDICAMENTOS', 'PROCEDIMIENTOS'] as $section) {
+                    if (!empty($this->data[$section]['data'])) {
+                        $this->insertSectionTotalRow($section, $sheet, 'I', $highestColumn);
+                        $this->alignSectionLeft($section, $sheet, $highestColumn);
+                        $this->styleSectionHeader($sheet, $section);
                     }
                 }
 
-                // Establecer bordes como invisibles
-                $sheet->getStyle("A1:{$highestColumn}{$highestRow}")->applyFromArray([
-                    'borders' => [
-                        'top' => [
-                            'borderStyle' => Border::BORDER_NONE,
-                        ],
-                        'bottom' => [
-                            'borderStyle' => Border::BORDER_NONE,
-                        ],
-                        'left' => [
-                            'borderStyle' => Border::BORDER_NONE,
-                        ],
-                        'right' => [
-                            'borderStyle' => Border::BORDER_NONE,
-                        ],
-                    ],
-                ]);
-
-                // Estilos para el título
-                $sheet->getStyle("A1")->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                        'size' => 14,  // Aumentar tamaño del título
-                    ],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    ],
-                ]);
-
-                // Aplicar estilos a los encabezados (Títulos y encabezados de columnas)
-                for ($row = 5; $row <= $highestRow; $row +=6) { // Comenzamos desde la tercera fila
-                    $highestColumnInRow = $sheet->getHighestColumn($row);
-
-                    // Estilo para los títulos (Primera cabecera)
-                    $sheet->getStyle("A{$row}:{$highestColumnInRow}{$row}")->applyFromArray([
-                        'fill' => [
-                            'fillType' => Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => '2e74b5'],
-                        ],
-                        'font' => [
-                            'color' => ['rgb' => 'FFFFFF'],
-                            'bold' => true,
-                        ],
-                        'alignment' => [
-                            'horizontal' => Alignment::HORIZONTAL_LEFT, // Alinear a la izquierda
-                        ],
-                    ]);
-
-                    // Estilo para los encabezados de columnas (Segunda cabecera)
-                    $nextRow = $row + 1;
-                    $sheet->getStyle("A{$nextRow}:{$highestColumnInRow}{$nextRow}")->applyFromArray([
-                        'fill' => [
-                            'fillType' => Fill::FILL_SOLID,
-                            'startColor' => ['rgb' => 'd9d9d9'],
-                        ],
-                        'font' => [
-                            'color' => ['rgb' => '78757e'],
-                            'bold' => true,
-                        ],
-                        'alignment' => [
-                            'horizontal' => Alignment::HORIZONTAL_LEFT, // Alinear a la izquierda
-                        ],
-                    ]);
-                }
-
-                // Llamadas a la función con los 3 argumentos
-                $insertMontoTotalRow('INSUMOS', $sheet, $highestColumn,$this->data['INSUMOS']['montoTotal']);
-                $insertMontoTotalRow('MEDICAMENTOS', $sheet, $highestColumn,$this->data['MEDICAMENTOS']['montoTotal']);
-                $insertMontoTotalRow('PROCEDIMIENTOS', $sheet, $highestColumn,$this->data['PROCEDIMIENTOS']['montoTotal']);
-
-                // Alinear a la izquierda los datos de MEDICAMENTOS
-                $medicamentosStartRow = $this->getSectionStartRow('MEDICAMENTOS', $sheet);
-                $medicamentosEndRow = $medicamentosStartRow+2 + count($this->data['MEDICAMENTOS']['data']);
-                $sheet->getStyle("A{$medicamentosStartRow}:{$highestColumn}{$medicamentosEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-
-                // Alinear a la izquierda los datos de INSUMOS
-                $insumosStartRow = $this->getSectionStartRow('INSUMOS', $sheet);
-                $insumosEndRow = $insumosStartRow+2 + count($this->data['INSUMOS']['data']);
-                $sheet->getStyle("A{$insumosStartRow}:{$highestColumn}{$insumosEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-
-                // Alinear a la izquierda los datos de PROCEDIMIENTOS
-                $procedimientosStartRow = $this->getSectionStartRow('PROCEDIMIENTOS', $sheet);
-                $procedimientosEndRow = $procedimientosStartRow+2 + count($this->data['PROCEDIMIENTOS']['data']);
-                $sheet->getStyle("A{$procedimientosStartRow}:{$highestColumn}{$procedimientosEndRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                // Configura estilos generales
+                //$this->applyGeneralStyles($sheet, $highestRow, $highestColumn);
+                //$this->mergeInitialCells($sheet);
             },
         ];
     }
 
+    private function insertTotalRow($label, $sheet, $column, $startRow, $highestColumn, $amount)
+    {
+        $sheet->insertNewRowBefore($startRow, 1);
+        $sheet->setCellValue("{$column}{$startRow}", "$label $amount");
+        //$sheet->mergeCells("{$column}{$startRow}:{$highestColumn}{$startRow}");
+        $sheet->getStyle("{$column}{$startRow}")->getFont()->setBold(true);
+    }
+
+    private function insertSectionTotalRow($sectionName, $sheet, $column, $highestColumn)
+    {
+        $startRow = $this->getSectionStartRow($sectionName, $sheet);
+        if ($startRow !== null) {
+            $monto = $this->data[$sectionName]['montoTotal'];
+            $this->insertTotalRow("Monto Total", $sheet, $column, $startRow, $highestColumn, $monto);
+        }
+    }
+
+    private function alignSectionLeft($sectionName, $sheet, $highestColumn)
+    {
+        $startRow = $this->getSectionStartRow($sectionName, $sheet);
+        if ($startRow !== null) {
+            $endRow = $startRow + 2 + count($this->data[$sectionName]['data']);
+            $sheet->getStyle("A{$startRow}:{$highestColumn}{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        }
+    }
+
+    private function calculateOverallTotal()
+    {
+        return array_reduce(['INSUMOS', 'MEDICAMENTOS', 'PROCEDIMIENTOS'], function ($total, $section) {
+            return $total + ($this->data[$section]['montoTotal'] ?? 0);
+        }, 0);
+    }
+
+    private function applyGeneralStylesx($sheet, $highestRow, $highestColumn)
+    {
+        $sheet->getStyle("A1:{$highestColumn}{$highestRow}")->applyFromArray([
+            'font' => [
+                'name' => 'Calibri',
+                'size' => 12,
+            ],
+        ]);
+
+        $sheet->getStyle("A1:{$highestColumn}{$highestRow}")
+            ->getAlignment()
+            ->setVertical(Alignment::VERTICAL_CENTER);
+
+        foreach (range(2, $highestRow) as $row) {
+            $alignment = is_numeric($sheet->getCell("A{$row}")->getValue()) ?
+                Alignment::HORIZONTAL_RIGHT : Alignment::HORIZONTAL_LEFT;
+            $sheet->getStyle("A{$row}:{$highestColumn}{$row}")
+                ->getAlignment()
+                ->setHorizontal($alignment);
+        }
+
+        $sheet->getStyle("A1:{$highestColumn}{$highestRow}")->applyFromArray([
+            'borders' => [
+                'top' => ['borderStyle' => Border::BORDER_NONE],
+                'bottom' => ['borderStyle' => Border::BORDER_NONE],
+                'left' => ['borderStyle' => Border::BORDER_NONE],
+                'right' => ['borderStyle' => Border::BORDER_NONE],
+            ],
+        ]);
+    }
+
+    private function mergeInitialCells($sheet,$column)
+    {
+        $sheet->mergeCells($column);
+    }
+
+    private function columnDimensionCells($sheet,$col,$width){
+        $sheet->getColumnDimension($col)->setWidth($width);
+    }
+
     private function getSectionStartRow($title, $sheet)
     {
-        // Obtiene el inicio de la sección
         foreach ($sheet->toArray() as $rowIndex => $row) {
             if (isset($row[0]) && $row[0] === $title) {
-                return $rowIndex + 1; // Retorna la fila justo después del título
+                return $rowIndex + 1;
             }
         }
-        return null; // Si no se encuentra la sección, retorna nulo
+        return null;
     }
+
+    private function applyTitleStyle($sheet, $range, $fontSize = 14, $isBold = true, $alignment,$bg)
+    {
+        $argb =  'FFCCCCCC';
+        $fontColor =  'FFFFFF';
+        switch ($bg) {
+            case 'header1':
+                $argb =  '2E74B5';
+                $fontColor =  'FFFFFF';
+                break;
+            case "header2":
+                $argb =  'FFCCCCCC';
+                $fontColor =  '797780';
+                break;
+            case "data":
+                $argb =  'FFFFFFFF';
+                $fontColor =  '000000';
+                break;
+            default:
+                $argb =  'FFFFFFFF';
+                $fontColor =  '000000';
+                break;
+        }
+        $sheet->getStyle($range)->applyFromArray([
+            'font' => [
+                'bold' => $isBold,
+                'size' => $fontSize,
+                'color' => ['rgb' => $fontColor],
+            ],
+            'alignment' => [
+                'horizontal' => $alignment,
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => [
+                    'argb' => $argb, // Color gris claro para las cabeceras
+                ],
+            ],
+        ]);
+    }
+
+    private function styleSectionHeader($sheet, $section)
+    {
+        $startRow = $this->getSectionStartRow($section, $sheet);
+        if ($startRow !== null) {
+            $this->applyTitleStyle($sheet, "A{$startRow}:J{$startRow}", 11, true, Alignment::HORIZONTAL_LEFT,'header1');
+            $this->applyTitleStyle($sheet, "A" . ($startRow + 1) . ":J" . ($startRow + 1), 11, true, Alignment::HORIZONTAL_LEFT,'header2');
+        }
+    }
+
 }
